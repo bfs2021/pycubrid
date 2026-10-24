@@ -304,58 +304,45 @@ implementation follows the agreed contract.
 
 ## Issue Labeling (cubrid-lab org standard)
 
-Write GitHub issues, PRs and comments in English; localized documentation remains
-welcome, and no specific translation tool is required.
+Every new issue starts with `status: needs triage` — even if its creator
+already assigned priority or size. Issue forms include this label; the
+`issue-triage.yml` workflow adds it to externally opened issues. GitHub Actions
+created using `GITHUB_TOKEN` do not trigger another workflow, so authorized
+agents/automation must include it when creating an issue. Contributors do not
+need label permissions; maintainer-controlled labels and decisions remain
+repository-local.
 
-Maintainers and triagers own label policy. An agent filing or triaging on behalf
-of a maintainer may apply the canonical labels when authorized. Maintainers or
-triagers assign exactly one `priority: <value>` label and exactly one `size: <value>` label for each new issue,
-alongside a type label (`bug`/`enhancement`/`documentation`/`chore`/`ci`/…) and an
-`area:` label when applicable. These must be GitHub labels, not just text in the
-issue title or body. Reporters describe urgency and effort without needing label
-permissions. Maintainer-created issues receive these labels at creation; permissionless
-reports receive them during initial maintainer triage.
+A maintainer or authorized triager completes this sequence:
 
-Issue titles use the same `type(scope): description` format as pull request
-titles (see [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-and-commit-titles)).
-`.github/workflows/issue-triage.yml` flags incomplete human-submitted issue
-titles or labels as `status: needs triage` without posting a comment or
-guessing priority/size. Maintainers remove that label once triage is complete.
-Agents and workflows creating issues through CLI/API must supply canonical
-metadata at creation; `GITHUB_TOKEN`-created issues do not retrigger this guard.
+1. Check the problem's evidence and validity, duplicate open/closed issues and
+   competing PRs, this repository's scope, issue type, dependencies and
+   independently checkable completion criteria. Close a duplicate or invalid
+   request with a reason; investigation issues may say evidence is unverified.
+2. Compare the impact and urgency with **every currently open issue in this
+   repository**, not just the latest ones or a similarly named issue. Confirm
+   existing priority labels remain sensible; adjust only where the evidence
+   supports it. Do not override actual safety/release prerequisites.
+3. Apply **exactly one** of `priority: critical`, `priority: high`,
+   `priority: medium` or `priority: low`. Priority means impact/urgency,
+   not PR merge readiness or implementation size.
+4. Estimate **exactly one** `size: small` (focused change),
+   `size: medium` (several files or a contained feature) or
+   `size: large` (cross-cutting work). Split large implementation tasks into
+   independently reviewable issues when appropriate; keep parent acceptance
+   separate. `good first issue` work should normally be `size: small`.
+5. Read back the *persisted GitHub labels* and confirm the type, one valid
+   priority and one valid size, scope/duplicates, backlog comparison and
+   dependencies. Only then remove `status: needs triage`. Labels by themselves
+   do not prove that a full triage was performed; **never auto-clear** this
+   status. If a dependency or design decision remains open, keep it recorded
+   and defer implementation rather than inventing a decision.
 
-Use the following exact names, with **one space after the colon**:
-
-- Priority: `priority: critical`, `priority: high`, `priority: medium`, `priority: low`.
-- Size: `size: XS`, `size: S`, `size: M`, `size: L`, `size: XL`.
-
-Do not introduce variants such as `priority:high`, `priority-high`, `P1`, or
-`size:S`. Reuse the repository's canonical labels; if a required label is missing,
-maintainers create it with the exact name above before filing or triaging the issue. This policy governs
-new issue creation, not bulk renaming or relabeling existing issues unless
-explicitly requested.
-
-Priority reflects urgency and impact; size estimates implementation effort and
-helps contributors pick appropriately scoped work.
-
-| Label | Meaning | Rough guide |
-|-------|---------|-------------|
-| `size: XS` | Trivial change | < ~10 lines; single-file typo/config/one-liner |
-| `size: S` | Small change | One file or one focused function; a single test or doc page |
-| `size: M` | Medium change | A few files; a new test module, a bug fix with tests, a CI job |
-| `size: L` | Large change | Cross-cutting change across many files; multi-artifact (e.g. demo GIF + video + docs) |
-| `size: XL` | Very large | Consider splitting into smaller issues before starting |
-
-Rules:
-
-1. **Size reflects effort, not importance** — a one-line fix for a critical bug is still `size: XS`.
-2. **Maintainers assign both `priority:` and `size:` at creation/initial triage.** If scope or impact
-   is uncertain, use a provisional estimate, explain the uncertainty in the body,
-   and add `status: needs triage` (or the repo's equivalent). Refine the estimates
-   during triage rather than omitting either required label.
-3. **`good first issue` should be `size: XS` or `size: S`.** If a good-first-issue grows
-   past `size: S`, re-scope it or drop the `good first issue` label.
-4. **`size: XL` is a signal to split**, not a green light to start a sprawling change.
+For an already-open issue, legacy `size: XS`/`size: S` map to small,
+`size: M` to medium, and `size: L`/`size: XL` to large. Preserve priority,
+assignees, remaining labels, external contributor work and historical closed
+issues. Only migrate a known size; missing/ambiguous labels need triage.
+Type labels such as `bug`, `testing` and `documentation` remain in use.
+This is a maintainer review routine, not a new CI or merge gate.
 
 ### Good first issue lifecycle
 
