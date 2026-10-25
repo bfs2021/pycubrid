@@ -400,12 +400,18 @@ class connection:
         kind = operator.index(schema_type)
         if not -(2**31) <= kind < 2**31:
             raise OverflowError("schema type does not fit a signed 32-bit int")
-        names = (class_name,) if attr_name is _OMITTED else (class_name, attr_name)
-        for position, name in enumerate(names, 2):
+        names: list[str] = []
+        for position, name in enumerate(
+            (class_name,) if attr_name is _OMITTED else (class_name, attr_name), 2
+        ):
             if not isinstance(name, str):
                 raise TypeError(f"argument {position} must be str, not {type(name).__name__}")
-            if "\x00" in name:
+            # Use the stored text, as the C parser does: a subclass cannot
+            # override what is validated or encoded.
+            text = str.__str__(name)
+            if "\x00" in text:
                 raise ValueError("embedded null character")
+            names.append(text)
         if not CCISchemaType.CLASS <= kind <= _CCI_SCH_LAST:
             raise InterfaceError("invalid schema type")
         flag = _SCHEMA_PATTERN_FLAGS.get(kind)
@@ -420,21 +426,20 @@ class connection:
                 driver._check_encodable("schema argument", name)
             packet = GetSchemaPacket(
                 kind,
-                class_name,
+                names[0],
                 flag,
-                arg2=None if attr_name is _OMITTED else attr_name,
+                arg2=names[1] if len(names) > 1 else None,
                 protocol_version=driver._protocol_version,
             )
-            primary: BaseException | None = None
-            handle: int | None = None
+            completed = False
             try:
                 self._utility_request(packet, state)
-                handle = packet.query_handle
                 if any(c.column_type not in _SCHEMA_CELL_TYPES for c in packet.columns):
                     raise NotSupportedError("schema result has an unverified column type")
                 if packet.tuple_count == 0:
+                    completed = True
                     return None
-                fetched = FetchPacket(handle, 0, fetch_size=1, columns=packet.columns)
+                fetched = FetchPacket(packet.query_handle, 0, fetch_size=1, columns=packet.columns)
                 self._utility_request(fetched, state)
                 if not fetched.rows:
                     raise OperationalError("schema result ended before its declared row count")
@@ -443,20 +448,23 @@ class connection:
                     # CCI confirm_schema_type_info: drop the collection and
                     # protocol-mask bits of the DOMAIN short's first byte.
                     row[1] = row[1] & 0xFFFF & ~(_DOMAIN_FIRST_BYTE_MASK << 8)
+                completed = True
                 return row
-            except BaseException as exc:
-                # A failed fenced FC9 has no handle on a still-current session:
-                # parse failures retire it and server errors allocate none.
-                primary = exc
-                raise
             finally:
-                if handle is not None and driver._prepared_session_is_current(generation, sock):
+                # Read the handle from the packet itself, so an interrupt right
+                # after FC9 completes still releases it. A failed fenced FC9
+                # leaves none on a current session: parse failures retire the
+                # session and server errors allocate no handle.
+                handle = packet.query_handle
+                if handle and driver._prepared_session_is_current(generation, sock):
                     try:
                         self._utility_request(CloseQueryPacket(handle), state)
+                    # Preserve a primary error; any cleanup failure retires the session.
+                    # codeql[py/catch-base-exception]
                     except BaseException:
                         if driver._prepared_session_is_current(generation, sock):
                             driver._discard_uncertain_prepared_session()
-                        if primary is None:
+                        if completed:
                             raise
                         _LOGGER.warning("Failed to close schema result after primary failure")
 

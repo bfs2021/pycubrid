@@ -466,7 +466,8 @@ Ping은 소비한 결과 페이지를 검증하고 아직 소유한 핸들만 �
 | `class_name` | 필수 `str`, 그대로 전송(CLASS/VCLASS는 `%`/`_` 패턴) | 누락 또는 `str`이 아님(`None` 포함): `TypeError`, NUL: `ValueError`, 연결 문자 집합으로 인코딩 불가: `DataError` |
 | `attr_name` | 선택 `str`, 주었을 때만 전송(ATTRIBUTE/CLASS_ATTRIBUTE는 패턴) | `str`이 아님(명시적 `None` 포함): `TypeError`, NUL: `ValueError`, 인코딩 불가: `DataError` |
 
-키워드 인자는 `TypeError`로 거부합니다. 공식 `_cubrid.CUBRID_SCH_*` 상수는
+`str` 하위 클래스는 저장된 문자열 그대로 검증·전송합니다. 키워드 인자는
+`TypeError`로 거부합니다. 공식 `_cubrid.CUBRID_SCH_*` 상수는
 내보내지 않으므로 정수나 `pycubrid.constants.CCISchemaType` 멤버를 넘깁니다.
 공식 확장처럼 CLASS/VCLASS는 패턴 플래그 1(클래스 이름),
 ATTRIBUTE/CLASS_ATTRIBUTE는 플래그 2(속성 이름)를 보냅니다. 행 값은 `str`,

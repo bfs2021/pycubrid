@@ -2118,7 +2118,8 @@ official `_cubrid.connection.schema_info`. The wrapper does not expose it; use
 | `class_name` | required `str`, sent as given (`%`/`_` patterns for CLASS/VCLASS) | missing or not `str` (including `None`): `TypeError`; NUL: `ValueError`; not encodable in the connection charset: `DataError` |
 | `attr_name` | optional `str`, sent only when given (patterns for ATTRIBUTE/CLASS_ATTRIBUTE) | not `str` (including explicit `None`): `TypeError`; NUL: `ValueError`; unencodable: `DataError` |
 
-Keywords are rejected with `TypeError`. The official `_cubrid.CUBRID_SCH_*`
+A `str` subclass is validated and sent as its stored text. Keywords are rejected
+with `TypeError`. The official `_cubrid.CUBRID_SCH_*`
 constants are not exported; pass the integers or `pycubrid.constants.CCISchemaType`
 members. CLASS/VCLASS send pattern flag 1 (class
 name) and ATTRIBUTE/CLASS_ATTRIBUTE flag 2 (attribute name), as the official

@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from pycubrid.compat import native
 from pycubrid.constants import CCISchemaType
 from pycubrid.constants import CUBRIDDataType as T
 from pycubrid.exceptions import (
@@ -406,3 +407,59 @@ def test_fetch_requests_one_row_with_schema_columns(owned, monkeypatch: pytest.M
     monkeypatch.setattr(FetchPacket, "parse", parse)
     assert owner.schema_info(1, "%") == ["a", 2, None]
     assert len(seen) == 1 and seen[0].current_tuple_count == 0 and seen[0].fetch_size == 1
+
+
+class _DisguisedText(str):
+    """A str subclass whose overrides would hide NUL and change the sent bytes."""
+
+    def __contains__(self, item: object) -> bool:
+        return False
+
+    def encode(self, *args: Any, **kwargs: Any) -> bytes:
+        return b"other"
+
+    def __str__(self) -> str:
+        return "other"
+
+
+@pytest.mark.parametrize("position", [1, 2])
+def test_str_subclass_cannot_hide_nul(owned, position: int) -> None:
+    owner, driver, sock = owned
+    args: list[Any] = [4, "t", "a"]
+    args[position] = _DisguisedText("a\x00b")
+    with pytest.raises(ValueError):
+        owner.schema_info(*args)
+    assert _codes(sock) == []
+    assert driver._connected
+
+
+def test_str_subclass_sends_its_stored_text(owned) -> None:
+    owner, _driver, sock = owned
+    rs = _attribute_rows()
+    _load(sock, _schema(rs), _page(rs), ok_body(IN_TRAN))
+    assert owner.schema_info(4, _DisguisedText("si_t"), _DisguisedText("name")) is not None
+    assert _requests(sock)[0][1][1:3] == (b"si_t\x00", b"name\x00")
+
+
+@pytest.mark.parametrize("rows", [0, 1])
+def test_interrupt_right_after_schema_reply_still_closes_the_handle(
+    owned, monkeypatch: pytest.MonkeyPatch, rows: int
+) -> None:
+    owner, driver, sock = owned
+    columns = _CLASS_COLUMNS
+    rs = ResultSet("class", columns, _class_rows("t").rows[:rows])
+    _load(sock, _schema(rs, handle=57), ok_body(IN_TRAN))
+    original = native.connection._utility_request
+
+    def interrupted(self: Any, packet: Any, state: Any) -> None:
+        original(self, packet, state)
+        if isinstance(packet, GetSchemaPacket):
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(native.connection, "_utility_request", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        owner.schema_info(1, "t")
+    requests = _requests(sock)
+    assert [code for code, _ in requests] == [9, 6]
+    assert requests[1][1][0] == struct.pack(">i", 57)
+    assert driver._connected
