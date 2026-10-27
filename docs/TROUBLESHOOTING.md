@@ -233,9 +233,13 @@ See [What the timeouts bound](CONNECTION.md#what-the-timeouts-bound) for details
 **Symptom:**
 
 ```
-OperationalError: Connection is closed
-InterfaceError: Connection is closed
+InterfaceError: connection is closed
+OperationalError: socket communication failed
+OperationalError: connection lost during receive
 ```
+
+The first message is raised by calls made after a connection has already
+closed. The other two are raised by the call that lost the transport.
 
 **Causes:**
 
@@ -274,7 +278,7 @@ conn = get_connection()
 try:
     cur = conn.cursor()
     cur.execute("SELECT 1")
-except pycubrid.OperationalError:
+except (pycubrid.OperationalError, pycubrid.InterfaceError):
     # Reconnect on connection loss
     conn = get_connection()
     cur = conn.cursor()
