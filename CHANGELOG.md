@@ -51,6 +51,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### CI
 
+- **CI installs third-party dependencies from a committed `uv.lock`** — CI, full
+  integration and documentation jobs install locked, hash-checked wheels with source builds
+  disabled, and build the trusted checkout separately with its locked backend. Dependabot
+  updates `pyproject.toml` and `uv.lock` together through its uv ecosystem. Python 3.15 uses a
+  documented pure Python PyYAML 6.0.3 wheel until upstream provides a compatible wheel. No
+  driver API or runtime behaviour changes.
 - **Every new issue starts in `status: needs triage` (#1033)** — the issue forms add the
   label and `issue-triage.yml` adds it to every opened issue instead of only to issues with
   incomplete titles or labels; the unused `scripts/check_issue_metadata.py` check is removed.
